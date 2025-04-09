@@ -1,0 +1,40 @@
+# Visual Studio and .NET Core generated files
+
+## Build results
+[Bb]in/
+[Oo]bj/
+
+## Visual Studio 2019/2022 files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Auto-generated files by Visual Studio Code
+.vscode/
+
+## Rider files
+.idea/
+*.sln.iml
+
+## DotNet tools
+*.dotnet/
+
+## NuGet packages
+*.nupkg
+packages/
+
+## OS generated files
+.DS_Store
+Thumbs.db
+
+## Log files
+*.log
+
+## Temporary files
+*.tmp
+*.temp
+
+## Data
+Data/*.txt
