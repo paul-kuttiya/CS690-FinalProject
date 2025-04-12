@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using GiftTrackerApp.Services;
 
 namespace GiftTrackerApp
@@ -8,17 +9,50 @@ namespace GiftTrackerApp
     {
         static void Main(string[] args)
         {
-            Console.Write("Enter User Name or type \"Quit\" to exit: ");
-            string userName = Console.ReadLine() ?? string.Empty;
+            Directory.CreateDirectory("Data");
+
+            var userFiles = Directory.GetFiles("Data", "*.txt");
+            string userName = string.Empty;
+            if (userFiles.Any())
+            {
+                Console.WriteLine("Select an existing user by number, or press Enter to create a new user:");
+                int i = 1;
+                foreach (var file in userFiles)
+                {
+                    string existingUser = Path.GetFileNameWithoutExtension(file);
+                    Console.WriteLine($"{i}. {existingUser}");
+                    i++;
+                }
+                Console.Write("Your choice (number) or press Enter for new user: ");
+                string selection = Console.ReadLine() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(selection))
+                {
+                    Console.Write("Enter new user name: ");
+                    userName = Console.ReadLine() ?? string.Empty;
+                }
+                else if (int.TryParse(selection, out int option) && option > 0 && option <= userFiles.Length)
+                {
+                    userName = Path.GetFileNameWithoutExtension(userFiles[option - 1]);
+                    Console.WriteLine($"User '{userName}' selected.");
+                }
+                else
+                {
+                    Console.Write("Invalid selection. Enter new user name: ");
+                    userName = Console.ReadLine() ?? string.Empty;
+                }
+            }
+            else
+            {
+                Console.Write("No existing users found. Enter new user name: ");
+                userName = Console.ReadLine() ?? string.Empty;
+            }
 
             if (userName.Equals("Quit", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
 
-            Directory.CreateDirectory("Data");
-            string dataFilePath = Path.Combine("Data", $"{userName}.txt");
-
+            string dataFilePath = Path.Combine("Data", $"{userName.ToLower()}.txt");
             if (!File.Exists(dataFilePath))
             {
                 File.WriteAllText(dataFilePath, string.Empty);
@@ -37,50 +71,59 @@ namespace GiftTrackerApp
                 Console.WriteLine("2. Edit Gift Idea");
                 Console.WriteLine("3. Delete Gift Idea");
                 Console.WriteLine("4. Search Gift Ideas");
-                Console.WriteLine("5. Simulate Gift Card Purchase");
-                Console.WriteLine("6. View Transaction History");
-                Console.WriteLine("7. Analyze Spending Trends");
-                Console.WriteLine("8. Log Out");
-                Console.WriteLine("9. Quit");
-                Console.Write("Enter your option (1-9): ");
+                Console.WriteLine("5. View Gifts");
+                Console.WriteLine("6. View Summary");
+                Console.WriteLine("7. Log Out");
+                Console.WriteLine("8. Quit");
+                Console.Write("Enter your option (1-8): ");
                 string option = Console.ReadLine() ?? string.Empty;
 
                 switch (option)
                 {
                     case "1":
                         GiftIdeaService.AddGiftIdea(dataFilePath);
+                        PauseBeforeMainMenu();
                         break;
                     case "2":
                         GiftIdeaService.EditGiftIdea(dataFilePath);
+                        PauseBeforeMainMenu();
                         break;
                     case "3":
                         GiftIdeaService.DeleteGiftIdea(dataFilePath);
+                        PauseBeforeMainMenu();
                         break;
                     case "4":
                         GiftIdeaService.SearchGiftIdeas(dataFilePath);
+                        PauseBeforeMainMenu();
                         break;
                     case "5":
-                        TransactionService.SimulateGiftCardPurchase(dataFilePath);
+                        GiftIdeaService.ViewGiftIdeas(dataFilePath);
+                        PauseBeforeMainMenu();
                         break;
                     case "6":
-                        TransactionService.ViewTransactionHistory(dataFilePath);
+                        GiftIdeaService.ViewSummary(dataFilePath);
+                        PauseBeforeMainMenu();
                         break;
                     case "7":
-                        TransactionService.AnalyzeSpendingTrends(dataFilePath);
-                        break;
-                    case "8":
                         Console.WriteLine("Logging out...");
                         Main(args);
                         return;
-                    case "9":
+                    case "8":
                         Console.WriteLine("Exiting the application...");
                         exit = true;
                         break;
                     default:
                         Console.WriteLine("Invalid option. Try again.");
+                        PauseBeforeMainMenu();
                         break;
                 }
             }
+        }
+
+        private static void PauseBeforeMainMenu()
+        {
+            Console.WriteLine("\nPress Enter to return to Main Menu...");
+            Console.ReadLine();
         }
     }
 }

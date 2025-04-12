@@ -11,13 +11,30 @@ namespace GiftTrackerApp.Services
         {
             Console.Write("Enter Gift Idea Title: ");
             string title = Console.ReadLine() ?? string.Empty;
+            
             Console.Write("Enter Gift Description: ");
             string description = Console.ReadLine() ?? string.Empty;
+            
             Console.Write("Enter Additional Notes (optional): ");
             string notes = Console.ReadLine() ?? string.Empty;
 
+            Console.Write("Enter Gift For (e.g., Mom, Friend, etc.): ");
+            string giftFor = Console.ReadLine() ?? string.Empty;
+
+            int giftPrice;
+            while (true)
+            {
+                Console.Write("Enter Gift Price: ");
+                string priceInput = Console.ReadLine() ?? string.Empty;
+                if (int.TryParse(priceInput, out giftPrice))
+                {
+                    break;
+                }
+                Console.WriteLine("Invalid input. Please enter a numeric value for price.");
+            }
+
             int newId = GetNextGiftIdeaId(dataFilePath);
-            string entry = $"GIFT|{newId}|{DateTime.Now}|{title}|{description}|{notes}|New";
+            string entry = $"GIFT|{newId}|{DateTime.Now}|{title}|{description}|{notes}|{giftFor}|{giftPrice}";
             File.AppendAllText(dataFilePath, entry + Environment.NewLine);
             Console.WriteLine("Gift idea added successfully.");
         }
@@ -40,13 +57,15 @@ namespace GiftTrackerApp.Services
                 if (lines[i].StartsWith("GIFT|"))
                 {
                     var parts = lines[i].Split('|');
-                    if (parts.Length >= 7 && int.TryParse(parts[1], out int currentId) && currentId == editId)
+                    if (parts.Length >= 8 && int.TryParse(parts[1], out int currentId) && currentId == editId)
                     {
                         found = true;
                         Console.WriteLine("Current Details:");
                         Console.WriteLine($"Title: {parts[3]}");
                         Console.WriteLine($"Description: {parts[4]}");
                         Console.WriteLine($"Additional Notes: {parts[5]}");
+                        Console.WriteLine($"Gift For: {parts[6]}");
+                        Console.WriteLine($"Price: {parts[7]}");
 
                         Console.Write("Enter new Title (press Enter to keep current): ");
                         string newTitle = Console.ReadLine() ?? string.Empty;
@@ -63,7 +82,29 @@ namespace GiftTrackerApp.Services
                         if (string.IsNullOrWhiteSpace(newNotes))
                             newNotes = parts[5];
 
-                        string updatedLine = $"GIFT|{parts[1]}|{parts[2]}|{newTitle}|{newDescription}|{newNotes}|{parts[6]}";
+                        Console.Write("Enter new Gift For (press Enter to keep current): ");
+                        string newGiftFor = Console.ReadLine() ?? string.Empty;
+                        if (string.IsNullOrWhiteSpace(newGiftFor))
+                            newGiftFor = parts[6];
+
+                        int newPrice;
+                        while (true)
+                        {
+                            Console.Write("Enter new Gift Price (press Enter to keep current): ");
+                            string priceInput = Console.ReadLine() ?? string.Empty;
+                            if (string.IsNullOrWhiteSpace(priceInput))
+                            {
+                                newPrice = int.Parse(parts[7]);
+                                break;
+                            }
+                            if (int.TryParse(priceInput, out newPrice))
+                            {
+                                break;
+                            }
+                            Console.WriteLine("Invalid input. Please enter a numeric value for price.");
+                        }
+
+                        string updatedLine = $"GIFT|{parts[1]}|{parts[2]}|{newTitle}|{newDescription}|{newNotes}|{newGiftFor}|{newPrice}";
                         lines[i] = updatedLine;
                         Console.WriteLine("Gift idea updated successfully.");
                         break;
@@ -72,9 +113,13 @@ namespace GiftTrackerApp.Services
             }
 
             if (!found)
+            {
                 Console.WriteLine("Gift Idea not found.");
+            }
             else
+            {
                 File.WriteAllLines(dataFilePath, lines);
+            }
         }
 
         public static void DeleteGiftIdea(string dataFilePath)
@@ -95,7 +140,7 @@ namespace GiftTrackerApp.Services
                 if (lines[i].StartsWith("GIFT|"))
                 {
                     var parts = lines[i].Split('|');
-                    if (parts.Length >= 7 && int.TryParse(parts[1], out int currentId) && currentId == deleteId)
+                    if (parts.Length >= 8 && int.TryParse(parts[1], out int currentId) && currentId == deleteId)
                     {
                         Console.Write($"Are you sure you want to delete Gift Idea {deleteId} with Title '{parts[3]}'? [Y/N]: ");
                         string confirmation = Console.ReadLine() ?? string.Empty;
@@ -128,27 +173,29 @@ namespace GiftTrackerApp.Services
             var lines = File.ReadAllLines(dataFilePath);
             bool anyFound = false;
             Console.WriteLine("Matching Gift Ideas:");
-            Console.WriteLine("ID\tTimestamp\t\tTitle\tDescription\tAdditional Notes\tStatus");
+            Console.WriteLine("{0,-5} {1,-22} {2,-15} {3,-20} {4,-25} {5,-15} {6,-6}", "ID", "Timestamp", "Title", "Description", "Additional Notes", "Gift For", "Price");
 
             foreach (var line in lines)
             {
                 if (line.StartsWith("GIFT|"))
                 {
                     var parts = line.Split('|');
-                    if (parts.Length >= 7)
+                    if (parts.Length >= 8)
                     {
                         string id = parts[1];
-                        string timestamp = parts[2];
+                        string timestamp = Convert.ToDateTime(parts[2]).ToString("MM/dd/yyyy HH:mm:ss");
                         string title = parts[3];
                         string description = parts[4];
                         string notes = parts[5];
-                        string status = parts[6];
+                        string giftFor = parts[6];
+                        string price = parts[7];
 
                         if (title.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0 ||
                             description.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            notes.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                            notes.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            giftFor.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
                         {
-                            Console.WriteLine($"{id}\t{timestamp}\t{title}\t{description}\t{notes}\t{status}");
+                            Console.WriteLine("{0,-5} {1,-22} {2,-15} {3,-20} {4,-25} {5,-15} {6,-6}", id, timestamp, title, description, notes, giftFor, price);
                             anyFound = true;
                         }
                     }
@@ -157,6 +204,81 @@ namespace GiftTrackerApp.Services
 
             if (!anyFound)
                 Console.WriteLine("No matching gift ideas found.");
+        }
+
+        public static void ViewGiftIdeas(string dataFilePath)
+        {
+            Console.WriteLine("Gift Ideas:");
+            Console.WriteLine("{0,-5} {1,-22} {2,-15} {3,-20} {4,-25} {5,-15} {6,-6}", "ID", "Timestamp", "Title", "Description", "Additional Notes", "Gift For", "Price");
+            var lines = File.ReadAllLines(dataFilePath);
+            bool anyFound = false;
+            foreach (var line in lines)
+            {
+                if (line.StartsWith("GIFT|"))
+                {
+                    var parts = line.Split('|');
+                    if (parts.Length >= 8)
+                    {
+                        string id = parts[1];
+                        string timestamp = Convert.ToDateTime(parts[2]).ToString("MM/dd/yyyy HH:mm:ss");
+                        string title = parts[3];
+                        string description = parts[4];
+                        string notes = parts[5];
+                        string giftFor = parts[6];
+                        string price = parts[7];
+
+                        Console.WriteLine("{0,-5} {1,-22} {2,-15} {3,-20} {4,-25} {5,-15} {6,-6}", id, timestamp, title, description, notes, giftFor, price);
+                        anyFound = true;
+                    }
+                }
+            }
+            if (!anyFound)
+                Console.WriteLine("No gift ideas found.");
+        }
+
+        public static void ViewSummary(string dataFilePath)
+        {
+            var lines = File.ReadAllLines(dataFilePath);
+            int overallCount = 0;
+            int overallTotalPrice = 0;
+
+            var groupSummary = new Dictionary<string, (int count, int totalPrice)>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var line in lines)
+            {
+                if (line.StartsWith("GIFT|"))
+                {
+                    var parts = line.Split('|');
+                    if (parts.Length >= 8 && int.TryParse(parts[7], out int giftPrice))
+                    {
+                        overallCount++;
+                        overallTotalPrice += giftPrice;
+
+                        string giftFor = parts[6].Trim();
+                        if (groupSummary.ContainsKey(giftFor))
+                        {
+                            var current = groupSummary[giftFor];
+                            groupSummary[giftFor] = (current.count + 1, current.totalPrice + giftPrice);
+                        }
+                        else
+                        {
+                            groupSummary[giftFor] = (1, giftPrice);
+                        }
+                    }
+                }
+            }
+
+            Console.WriteLine("Gift Summary:");
+            Console.WriteLine("-------------------------------------------------------------");
+            Console.WriteLine("{0,-15} {1,-10} {2,-10}", "Gift For", "Count", "Total Price");
+            Console.WriteLine("-------------------------------------------------------------");
+            foreach (var entry in groupSummary)
+            {
+                Console.WriteLine("{0,-15} {1,-10} {2,-10}", entry.Key, entry.Value.count, entry.Value.totalPrice);
+            }
+            Console.WriteLine("-------------------------------------------------------------");
+            Console.WriteLine("Overall Total Gifts: " + overallCount);
+            Console.WriteLine("Overall Total Price: " + overallTotalPrice);
         }
 
         private static int GetNextGiftIdeaId(string dataFilePath)
