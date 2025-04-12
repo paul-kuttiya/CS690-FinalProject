@@ -8,7 +8,8 @@ namespace GiftTrackerApp.Models
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string AdditionalNotes { get; set; } = string.Empty;
+        public string GiftFor { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
-        public string Status { get; set; } = string.Empty;
+        public int Price { get; set; }
     }
 }
