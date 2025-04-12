@@ -9,8 +9,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: '0'
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4
@@ -26,3 +28,9 @@ jobs:
       - name: Run tests
         working-directory: GiftTrackerApp.Tests
         run: dotnet test
+
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@v1
+        env:
+          WITH_V: false
+          PRERELEASE: false
