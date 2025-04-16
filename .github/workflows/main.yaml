@@ -29,6 +29,10 @@ jobs:
       - name: Build GiftTrackerApp (Release)
         run: dotnet build GiftTrackerApp/GiftTrackerApp.csproj --configuration Release --no-restore
 
+      - name: Run tests
+        working-directory: GiftTrackerApp.Tests
+        run: dotnet test
+
       - name: Publish GiftTrackerApp
         run: dotnet publish GiftTrackerApp/GiftTrackerApp.csproj --configuration Release --output ./publish
 
@@ -36,10 +40,15 @@ jobs:
         run: zip -r GiftTrackerApp.zip ./publish
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: GiftTrackerApp-release
           path: GiftTrackerApp.zip
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+          overwrite: true
+          include-hidden-files: false
 
       - name: Bump version and push tag
         uses: anothrNick/github-tag-action@v1
