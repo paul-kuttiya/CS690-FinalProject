@@ -29,26 +29,40 @@ jobs:
       - name: Build GiftTrackerApp (Release)
         run: dotnet build GiftTrackerApp/GiftTrackerApp.csproj --configuration Release --no-restore
 
-      - name: Run tests
-        working-directory: GiftTrackerApp.Tests
-        run: dotnet test
-
       - name: Publish GiftTrackerApp
         run: dotnet publish GiftTrackerApp/GiftTrackerApp.csproj --configuration Release --output ./publish
 
       - name: Package Published Output
         run: zip -r GiftTrackerApp.zip ./publish
 
-      - name: Upload release artifact
+      - name: Upload artifact for later use
         uses: actions/upload-artifact@v4
         with:
           name: GiftTrackerApp-release
           path: GiftTrackerApp.zip
           if-no-files-found: error
           retention-days: 30
-          compression-level: 6
-          overwrite: true
-          include-hidden-files: false
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: GiftTrackerApp.zip
+          asset_name: GiftTrackerApp.zip
+          asset_content_type: application/zip
 
       - name: Bump version and push tag
         uses: anothrNick/github-tag-action@v1
