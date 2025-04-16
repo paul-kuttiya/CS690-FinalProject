@@ -13,9 +13,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: '0'
 
       - name: Setup .NET Core SDK
@@ -26,12 +26,24 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Build project
-        run: dotnet build --configuration Release --no-restore
+      - name: Build project (Release)
+        run: dotnet build GiftTrackerApp/GiftTrackerApp.csproj --configuration Release --no-restore
 
       - name: Run tests
         working-directory: GiftTrackerApp.Tests
         run: dotnet test
+
+      - name: Publish GiftTrackerApp
+        run: dotnet publish GiftTrackerApp/GiftTrackerApp.csproj --configuration Release --output ./publish
+
+      - name: Package Published Output
+        run: zip -r GiftTrackerApp.zip ./publish
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: GiftTrackerApp-release
+          path: GiftTrackerApp.zip
 
       - name: Bump version and push tag
         uses: anothrNick/github-tag-action@v1
