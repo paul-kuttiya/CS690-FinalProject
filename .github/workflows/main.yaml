@@ -42,7 +42,8 @@ jobs:
         run: dotnet publish GiftTrackerApp/GiftTrackerApp.csproj --configuration Release --output ./publish
 
       - name: Package Published Output
-        run: zip -r GiftTrackerApp.zip ./publish
+        run: |
+          cd ./publish && zip -r ../GiftTrackerApp.zip .
 
       - name: Upload artifact for later use
         uses: actions/upload-artifact@v4
