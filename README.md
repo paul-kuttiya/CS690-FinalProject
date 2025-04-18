@@ -3,6 +3,7 @@ https://github.com/paul-kuttiya/CS690-FinalProject/wiki
 
 ## Project Structure
 
+```
 GiftTrackerApp
 ├── Data
 │   └── DataPlaceholder
