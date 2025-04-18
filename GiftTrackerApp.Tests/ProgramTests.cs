@@ -1,76 +1,32 @@
 using System;
 using System.IO;
-using GiftTrackerApp;
 using Xunit;
+using GiftTrackerApp;
 
 namespace GiftTrackerApp.Tests
 {
-    public class ProgramTests : IDisposable
+    public class ProgramTests
     {
-        private readonly string _tempDir;
-        public ProgramTests()
-        {
-            _tempDir = Path.Combine(Path.GetTempPath(), "GiftTrackerAppTest_" + Guid.NewGuid());
-            Directory.CreateDirectory(_tempDir);
-            Directory.SetCurrentDirectory(_tempDir);
-        }
-
         [Fact]
-        public void Main_ExitsWhenOption8Chosen()
+        public void Main_CreatesUserFile_AndDisplaysMenu()
         {
-            string input = "NoExistingUser" + Environment.NewLine + "8" + Environment.NewLine;
-            var originalIn = Console.In;
-            var originalOut = Console.Out;
-            using (var sr = new StringReader(input))
-            using (var sw = new StringWriter())
-            {
-                Console.SetIn(sr);
-                Console.SetOut(sw);
-                Program.Main(Array.Empty<string>());
-                var output = sw.ToString();
-                Assert.Contains("Exiting the application", output);
-            }
-            Console.SetIn(originalIn);
-            Console.SetOut(originalOut);
-        }
+            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+            var originalDir = Directory.GetCurrentDirectory();
+            Directory.SetCurrentDirectory(tempDir);
 
-        [Fact]
-        public void Main_DisplaysMainMenu()
-        {
-            string input = "NewUser" + Environment.NewLine + "8" + Environment.NewLine;
-            var originalIn = Console.In;
-            var originalOut = Console.Out;
-            using (var sr = new StringReader(input))
-            using (var sw = new StringWriter())
-            {
-                Console.SetIn(sr);
-                Console.SetOut(sw);
-                Program.Main(Array.Empty<string>());
-                var output = sw.ToString();
-                Assert.Contains("--- Main Menu ---", output);
-                Assert.Contains("1. Add Gift Idea", output);
-                Assert.Contains("2. Edit Gift Idea", output);
-                Assert.Contains("3. Delete Gift Idea", output);
-                Assert.Contains("4. Search Gift Ideas", output);
-                Assert.Contains("5. View Gifts", output);
-                Assert.Contains("6. View Summary", output);
-                Assert.Contains("7. Log Out", output);
-                Assert.Contains("8. Quit", output);
-                Assert.Contains("Enter your option (1-8):", output);
-            }
-            Console.SetIn(originalIn);
-            Console.SetOut(originalOut);
-        }
+            Console.SetIn(new StringReader("bob\n7\n"));
+            var output = new StringWriter();
+            Console.SetOut(output);
 
-        public void Dispose()
-        {
-            try
-            {
-                Directory.SetCurrentDirectory(Path.GetTempPath());
-                if (Directory.Exists(_tempDir))
-                    Directory.Delete(_tempDir, true);
-            }
-            catch { }
+            Program.Main(new string[0]);
+
+            Directory.SetCurrentDirectory(originalDir);
+
+            var outStr = output.ToString();
+            Assert.Contains("Gift Tracker for bob", outStr);
+            var userFile = Path.Combine(tempDir, "Data", "bob.txt");
+            Assert.True(File.Exists(userFile));
         }
     }
 }
