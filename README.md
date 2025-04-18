@@ -1,6 +1,6 @@
 # GiftTrackerApp
-wiki: [https://github.com/paul-kuttiya/CS690-FinalProject/wiki](https://github.com/paul-kuttiya/CS690-FinalProject/wiki)
-deployment: [https://github.com/paul-kuttiya/CS690-FinalProject/wiki/deployment](https://github.com/paul-kuttiya/CS690-FinalProject/wiki/Deployment)
+wiki: [https://github.com/paul-kuttiya/CS690-FinalProject/wiki](https://github.com/paul-kuttiya/CS690-FinalProject/wiki)  
+deployment: [https://github.com/paul-kuttiya/CS690-FinalProject/wiki/deployment](https://github.com/paul-kuttiya/CS690-FinalProject/wiki/Deployment)  
 user document: [https://github.com/paul-kuttiya/CS690-FinalProject/wiki/User-Documentation](https://github.com/paul-kuttiya/CS690-FinalProject/wiki/User-Documentation)
 
 ## Project Structure
