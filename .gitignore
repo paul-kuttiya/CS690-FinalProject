@@ -37,4 +37,4 @@ Thumbs.db
 *.temp
 
 ## Data
-Data/*.txt
+GiftTrackerApp/Data/*.txt

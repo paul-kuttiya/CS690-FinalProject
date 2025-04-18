@@ -1,237 +1,103 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
+using GiftTrackerApp.Models;
+using GiftTrackerApp.Repositories;
 using GiftTrackerApp.Services;
 using Xunit;
 
 namespace GiftTrackerApp.Tests
 {
-    public class GiftIdeaServiceTests : IDisposable
+    public class GiftIdeaServiceTests
     {
-        private readonly string _tempDir;
-        private readonly string _dataFilePath;
-        public GiftIdeaServiceTests()
+        private string GetTempFile()
         {
-            _tempDir = Path.Combine(Path.GetTempPath(), "GiftIdeaServiceTest_" + Guid.NewGuid());
-            Directory.CreateDirectory(_tempDir);
-            _dataFilePath = Path.Combine(_tempDir, "testData.txt");
-            if (!File.Exists(_dataFilePath))
-            {
-                File.WriteAllText(_dataFilePath, string.Empty);
-            }
+            var path = Path.GetTempFileName();
+            File.WriteAllText(path, string.Empty);
+            return path;
         }
 
         [Fact]
-        public void AddGiftIdea_CreatesValidEntry()
+        public void Add_AssignsIdAndTimestamp_AndSaves()
         {
-            string input = string.Join(Environment.NewLine, new string[]
-            {
-                "Birthday Gift",
-                "For John's birthday",
-                "Buy online if possible",
-                "Friend",
-                "50"
-            });
-            var originalIn = Console.In;
-            var originalOut = Console.Out;
-            using (var sr = new StringReader(input))
-            using (var sw = new StringWriter())
-            {
-                Console.SetIn(sr);
-                Console.SetOut(sw);
-                GiftIdeaService.AddGiftIdea(_dataFilePath);
-            }
-            Console.SetIn(originalIn);
-            Console.SetOut(originalOut);
+            var file = GetTempFile();
+            var service = new GiftIdeaService(new GiftIdeaRepository(file));
 
-            var lines = File.ReadAllLines(_dataFilePath);
-            Assert.Single(lines);
+            var idea = new GiftIdea
+            {
+                Title = "Test",
+                Description = "Desc",
+                Notes = "Notes",
+                GiftFor = "Friend",
+                Price = 10.5f
+            };
+            var result = service.Add(idea);
 
-            var parts = lines[0].Split('|');
-            Assert.Equal(8, parts.Length);
-            Assert.Equal("GIFT", parts[0]);
-            Assert.Matches(new Regex(@"^\d+$"), parts[1]);
-            DateTime.Parse(parts[2]);
-            Assert.Equal("Birthday Gift", parts[3]);
-            Assert.Equal("For John's birthday", parts[4]);
-            Assert.Equal("Buy online if possible", parts[5]);
-            Assert.Equal("Friend", parts[6]);
-            Assert.Equal("50", parts[7]);
+            Assert.Equal(1, result.Id);
+            Assert.NotEqual(default, result.Timestamp);
+            var all = service.GetAll();
+            Assert.Single(all);
+            Assert.Equal("Test", all.First().Title);
         }
 
         [Fact]
-        public void EditGiftIdea_UpdatesExistingEntry()
+        public void Update_ReturnsFalse_WhenNotFound()
         {
-            string initialLine = $"GIFT|1|{DateTime.Now}|Original Title|Original Description|Original Notes|Friend|50";
-            File.WriteAllText(_dataFilePath, initialLine + Environment.NewLine);
-
-            string input = string.Join(Environment.NewLine, new string[]
-            {
-                "1",
-                "New Title",
-                "", 
-                "Updated Notes",
-                "",
-                ""
-            });
-            var originalIn = Console.In;
-            var originalOut = Console.Out;
-            using (var sr = new StringReader(input))
-            using (var sw = new StringWriter())
-            {
-                Console.SetIn(sr);
-                Console.SetOut(sw);
-                GiftIdeaService.EditGiftIdea(_dataFilePath);
-            }
-            Console.SetIn(originalIn);
-            Console.SetOut(originalOut);
-
-            var lines = File.ReadAllLines(_dataFilePath);
-            Assert.Single(lines);
-            var parts = lines[0].Split('|');
-            Assert.Equal("1", parts[1]);
-            Assert.Equal("New Title", parts[3]);
-            Assert.Equal("Original Description", parts[4]);
-            Assert.Equal("Updated Notes", parts[5]);
-            Assert.Equal("Friend", parts[6]);
-            Assert.Equal("50", parts[7]);
+            var file = GetTempFile();
+            var service = new GiftIdeaService(new GiftIdeaRepository(file));
+            var fake = new GiftIdea { Id = 99 };
+            Assert.False(service.Update(fake));
         }
 
         [Fact]
-        public void DeleteGiftIdea_DeletesEntry_WhenConfirmed()
+        public void Update_ModifiesExistingIdea()
         {
-            string initialLine = $"GIFT|1|{DateTime.Now}|Gift Title|Description|Notes|Friend|50";
-            File.WriteAllText(_dataFilePath, initialLine + Environment.NewLine);
+            var file = GetTempFile();
+            var service = new GiftIdeaService(new GiftIdeaRepository(file));
+            var added = service.Add(new GiftIdea { Title = "A", Price = 1f });
+            added.Title = "B";
 
-            string input = string.Join(Environment.NewLine, new string[]
-            {
-                "1",
-                "Y"
-            });
-            var originalIn = Console.In;
-            var originalOut = Console.Out;
-            using (var sr = new StringReader(input))
-            using (var sw = new StringWriter())
-            {
-                Console.SetIn(sr);
-                Console.SetOut(sw);
-                GiftIdeaService.DeleteGiftIdea(_dataFilePath);
-            }
-            Console.SetIn(originalIn);
-            Console.SetOut(originalOut);
-
-            var lines = File.ReadAllLines(_dataFilePath);
-            Assert.Empty(lines.Where(l => l.StartsWith("GIFT|")));
+            var updated = service.Update(added);
+            Assert.True(updated);
+            var all = service.GetAll();
+            Assert.Equal("B", all.First().Title);
         }
 
         [Fact]
-        public void DeleteGiftIdea_DoesNotDeleteEntry_WhenCancelled()
+        public void Delete_RemovesIdea()
         {
-            string initialLine = $"GIFT|1|{DateTime.Now}|Gift Title|Description|Notes|Friend|50";
-            File.WriteAllText(_dataFilePath, initialLine + Environment.NewLine);
+            var file = GetTempFile();
+            var service = new GiftIdeaService(new GiftIdeaRepository(file));
+            var added = service.Add(new GiftIdea { Title = "A", Price = 1f });
 
-            string input = string.Join(Environment.NewLine, new string[]
-            {
-                "1",
-                "N"
-            });
-            var originalIn = Console.In;
-            var originalOut = Console.Out;
-            using (var sr = new StringReader(input))
-            using (var sw = new StringWriter())
-            {
-                Console.SetIn(sr);
-                Console.SetOut(sw);
-                GiftIdeaService.DeleteGiftIdea(_dataFilePath);
-            }
-            Console.SetIn(originalIn);
-            Console.SetOut(originalOut);
-
-            var lines = File.ReadAllLines(_dataFilePath);
-            Assert.Single(lines.Where(l => l.StartsWith("GIFT|")));
+            Assert.True(service.Delete(added.Id));
+            Assert.Empty(service.GetAll());
         }
 
         [Fact]
-        public void SearchGiftIdeas_DisplaysMatchingEntry()
+        public void Search_FindsMatchingItem()
         {
-            string entry = $"GIFT|1|{DateTime.Now}|Birthday Cake|A delicious cake|Notes|Family|30";
-            File.WriteAllText(_dataFilePath, entry + Environment.NewLine);
+            var file = GetTempFile();
+            var service = new GiftIdeaService(new GiftIdeaRepository(file));
+            service.Add(new GiftIdea { Title = "Hello world", Price = 1f });
+            service.Add(new GiftIdea { Title = "Other", Price = 1f });
 
-            string input = "cake" + Environment.NewLine;
-            var originalIn = Console.In;
-            var originalOut = Console.Out;
-            string output;
-            using (var sr = new StringReader(input))
-            using (var sw = new StringWriter())
-            {
-                Console.SetIn(sr);
-                Console.SetOut(sw);
-                GiftIdeaService.SearchGiftIdeas(_dataFilePath);
-                output = sw.ToString();
-            }
-            Console.SetIn(originalIn);
-            Console.SetOut(originalOut);
-
-            Assert.Contains("Matching Gift Ideas", output);
-            Assert.Contains("Birthday Cake", output);
+            var results = service.Search("hello");
+            Assert.Single(results);
+            Assert.Contains("Hello world", results.First().Title);
         }
 
         [Fact]
-        public void ViewGiftIdeas_DisplaysAllEntries()
+        public void GetSummary_ReturnsCorrectCountAndTotal()
         {
-            string entry1 = $"GIFT|1|{DateTime.Now}|Gift One|Desc One|Notes One|Friend|20";
-            string entry2 = $"GIFT|2|{DateTime.Now}|Gift Two|Desc Two|Notes Two|Family|40";
-            File.WriteAllText(_dataFilePath, entry1 + Environment.NewLine + entry2 + Environment.NewLine);
+            var file = GetTempFile();
+            var service = new GiftIdeaService(new GiftIdeaRepository(file));
+            service.Add(new GiftIdea { Title = "A", Price = 2f });
+            service.Add(new GiftIdea { Title = "B", Price = 3f });
 
-            var originalOut = Console.Out;
-            string output;
-            using (var sw = new StringWriter())
-            {
-                Console.SetOut(sw);
-                GiftIdeaService.ViewGiftIdeas(_dataFilePath);
-                output = sw.ToString();
-            }
-            Console.SetOut(originalOut);
-
-            Assert.Contains("Gift Ideas:", output);
-            Assert.Contains("Gift One", output);
-            Assert.Contains("Gift Two", output);
-        }
-
-        [Fact]
-        public void ViewSummary_DisplaysCorrectTotals()
-        {
-            string entry1 = $"GIFT|1|{DateTime.Now}|Gift One|Desc One|Notes One|Friend|20";
-            string entry2 = $"GIFT|2|{DateTime.Now}|Gift Two|Desc Two|Notes Two|Friend|40";
-            string entry3 = $"GIFT|3|{DateTime.Now}|Gift Three|Desc Three|Notes Three|Family|30";
-            File.WriteAllText(_dataFilePath, string.Join(Environment.NewLine, new[] { entry1, entry2, entry3 }));
-
-            var originalOut = Console.Out;
-            string output;
-            using (var sw = new StringWriter())
-            {
-                Console.SetOut(sw);
-                GiftIdeaService.ViewSummary(_dataFilePath);
-                output = sw.ToString();
-            }
-            Console.SetOut(originalOut);
-
-            Assert.Contains("Gift Summary", output);
-            Assert.Contains("Friend", output);
-            Assert.Contains("Family", output);
-            Assert.Contains("Overall Total Gifts: 3", output);
-            Assert.Contains("Overall Total Price: 90", output);
-        }
-
-        public void Dispose()
-        {
-            try
-            {
-                if (Directory.Exists(_tempDir))
-                    Directory.Delete(_tempDir, true);
-            }
-            catch { }
+            var (count, total) = service.GetSummary();
+            Assert.Equal(2, count);
+            Assert.Equal(5f, total);
         }
     }
 }
