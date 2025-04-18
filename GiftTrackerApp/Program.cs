@@ -1,6 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
+using GiftTrackerApp.Helpers;
+using GiftTrackerApp.Models;
+using GiftTrackerApp.Repositories;
 using GiftTrackerApp.Services;
 
 namespace GiftTrackerApp
@@ -9,121 +13,137 @@ namespace GiftTrackerApp
     {
         public static void Main(string[] args)
         {
+            // Prepare data directory.
             Directory.CreateDirectory("Data");
 
+            // Select or create user.
             var userFiles = Directory.GetFiles("Data", "*.txt");
-            string userName = string.Empty;
+            string userName;
             if (userFiles.Any())
             {
                 Console.WriteLine("Select an existing user by number, or press Enter to create a new user:");
-                int i = 1;
-                foreach (var file in userFiles)
+                for (int i = 0; i < userFiles.Length; i++)
                 {
-                    string existingUser = Path.GetFileNameWithoutExtension(file);
-                    Console.WriteLine($"{i}. {existingUser}");
-                    i++;
+                    var existing = Path.GetFileNameWithoutExtension(userFiles[i]);
+                    Console.WriteLine($"{i + 1}. {existing}");
                 }
-                Console.Write("Your choice (number) or press Enter for new user: ");
-                string selection = Console.ReadLine() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(selection))
+                var sel = ConsoleHelper.ReadString("Your choice (number) or press Enter for new user: ");
+                if (int.TryParse(sel, out int idx) && idx > 0 && idx <= userFiles.Length)
                 {
-                    Console.Write("Enter new user name: ");
-                    userName = Console.ReadLine() ?? string.Empty;
-                }
-                else if (int.TryParse(selection, out int option) && option > 0 && option <= userFiles.Length)
-                {
-                    userName = Path.GetFileNameWithoutExtension(userFiles[option - 1]);
+                    userName = Path.GetFileNameWithoutExtension(userFiles[idx - 1]);
                     Console.WriteLine($"User '{userName}' selected.");
                 }
                 else
                 {
-                    Console.Write("Invalid selection. Enter new user name: ");
-                    userName = Console.ReadLine() ?? string.Empty;
+                    userName = ConsoleHelper.ReadString("Enter new user name: ");
                 }
             }
             else
             {
-                Console.Write("No existing users found. Enter new user name: ");
-                userName = Console.ReadLine() ?? string.Empty;
+                userName = ConsoleHelper.ReadString("No existing users found. Enter new user name: ");
             }
 
-            if (userName.Equals("Quit", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            string dataFilePath = Path.Combine("Data", $"{userName.ToLower()}.txt");
-            if (!File.Exists(dataFilePath))
-            {
-                File.WriteAllText(dataFilePath, string.Empty);
-                Console.WriteLine($"New user file created for {userName}.");
-            }
-            else
-            {
-                Console.WriteLine($"User data loaded for {userName}.");
-            }
+            var dataFilePath = Path.Combine("Data", $"{userName.ToLower()}.txt");
+            var repo = new GiftIdeaRepository(dataFilePath);
+            var service = new GiftIdeaService(repo);
 
             bool exit = false;
             while (!exit)
             {
-                Console.WriteLine("\n--- Main Menu ---");
-                Console.WriteLine("1. Add Gift Idea");
-                Console.WriteLine("2. Edit Gift Idea");
-                Console.WriteLine("3. Delete Gift Idea");
-                Console.WriteLine("4. Search Gift Ideas");
-                Console.WriteLine("5. View Gifts");
-                Console.WriteLine("6. View Summary");
-                Console.WriteLine("7. Log Out");
-                Console.WriteLine("8. Quit");
-                Console.Write("Enter your option (1-8): ");
-                string option = Console.ReadLine() ?? string.Empty;
-
-                switch (option)
+                // Display a menu
+                Console.WriteLine($"\n--- Gift Tracker for {userName} ---");
+                Console.WriteLine("1. Add\n2. Edit\n3. Delete\n4. Search\n5. View All\n6. Summary\n7. Quit");
+                var choice = ConsoleHelper.ReadString("Select option: ");
+                switch (choice)
                 {
+                    // Add a new idea.
                     case "1":
-                        GiftIdeaService.AddGiftIdea(dataFilePath);
-                        PauseBeforeMainMenu();
+                        var newIdea = new GiftIdea
+                        {
+                            Title = ConsoleHelper.ReadString("Title: "),
+                            Description = ConsoleHelper.ReadString("Description: "),
+                            Notes = ConsoleHelper.ReadString("Notes: "),
+                            GiftFor = ConsoleHelper.ReadString("Gift For: "),
+                            Price = ConsoleHelper.ReadFloat("Price: ")
+                        };
+                        service.Add(newIdea);
+                        Console.WriteLine("Added.");
+                        ConsoleHelper.Pause();
+                        Console.Clear();
                         break;
+                    // Edit an existing idea.
                     case "2":
-                        GiftIdeaService.EditGiftIdea(dataFilePath);
-                        PauseBeforeMainMenu();
+                        var editId = ConsoleHelper.ReadInt("ID to edit: ");
+                        Console.Clear();
+                        var toEdit = service.GetAll().FirstOrDefault(i => i.Id == editId);
+                        if (toEdit == null)
+                            Console.WriteLine("Not found.");
+                        else
+                        {
+                            Console.WriteLine("Current Details:");
+                            Console.WriteLine(toEdit);
+                            toEdit.Title = ConsoleHelper.ReadString("New Title (Enter to keep): ", toEdit.Title);
+                            toEdit.Description = ConsoleHelper.ReadString("New Description (Enter to keep): ", toEdit.Description);
+                            toEdit.Notes = ConsoleHelper.ReadString("New Notes (Enter to keep): ", toEdit.Notes);
+                            toEdit.GiftFor = ConsoleHelper.ReadString("New Gift For (Enter to keep): ", toEdit.GiftFor);
+                            toEdit.Price = ConsoleHelper.ReadFloat("New Price (Enter to keep): ", toEdit.Price);
+                            Console.WriteLine(service.Update(toEdit) ? "Updated." : "Update failed.");
+                        }
+                        ConsoleHelper.Pause();
+                        Console.Clear();
                         break;
+                    // Delete an idea
                     case "3":
-                        GiftIdeaService.DeleteGiftIdea(dataFilePath);
-                        PauseBeforeMainMenu();
+                        var delId = ConsoleHelper.ReadInt("ID to delete: ");
+                        Console.Clear();
+                        Console.WriteLine(service.Delete(delId) ? "Deleted." : "Delete failed.");
+                        ConsoleHelper.Pause();
+                        Console.Clear();
                         break;
+                    // Search for ideas
                     case "4":
-                        GiftIdeaService.SearchGiftIdeas(dataFilePath);
-                        PauseBeforeMainMenu();
+                        var keyword = ConsoleHelper.ReadString("Keyword: ");
+                        Console.Clear();
+                        var results = service.Search(keyword);
+                        if (results.Any())
+                            results.ForEach(i => Console.WriteLine(i));
+                        else
+                            Console.WriteLine("No matching gift ideas found.");
+                        ConsoleHelper.Pause();
+                        Console.Clear();
                         break;
+                    // Show all ideas
                     case "5":
-                        GiftIdeaService.ViewGiftIdeas(dataFilePath);
-                        PauseBeforeMainMenu();
+                        Console.Clear();
+                        var all = service.GetAll();
+                        if (all.Any())
+                            all.ForEach(i => Console.WriteLine(i));
+                        else
+                            Console.WriteLine("No gift ideas found.");
+                        ConsoleHelper.Pause();
+                        Console.Clear();
                         break;
+                    // Show a summary
                     case "6":
-                        GiftIdeaService.ViewSummary(dataFilePath);
-                        PauseBeforeMainMenu();
+                        Console.Clear();
+                        var summary = service.GetSummary();
+                        Console.WriteLine("Gift Summary:");
+                        Console.WriteLine($"Overall Count: {summary.count}");
+                        Console.WriteLine($"Overall Total Price: {summary.total}");
+                        ConsoleHelper.Pause();
+                        Console.Clear();
                         break;
+                    // Exit
                     case "7":
-                        Console.WriteLine("Logging out...");
-                        Main(args);
-                        return;
-                    case "8":
-                        Console.WriteLine("Exiting the application...");
                         exit = true;
                         break;
                     default:
                         Console.WriteLine("Invalid option. Try again.");
-                        PauseBeforeMainMenu();
+                        ConsoleHelper.Pause();
+                        Console.Clear();
                         break;
                 }
             }
-        }
-
-        private static void PauseBeforeMainMenu()
-        {
-            Console.WriteLine("\nPress Enter to return to Main Menu...");
-            Console.ReadLine();
         }
     }
 }
